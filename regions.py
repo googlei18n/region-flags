@@ -59,26 +59,46 @@ def load_regions():
 
     return regions
 
+def strip_accents(s):
+
+    import unicodedata
+
+    return ''.join(c
+        for c in unicodedata.normalize('NFD', s)
+        if unicodedata.category(c) != 'Mn'
+    )
+
 def load_subregions():
 
     import re
-
+    
     entries = []
 
     entries.extend(load_subregion_entries('data/iso-3166-2-us.tsv'))
     entries.extend(load_subregion_entries('data/iso-3166-2-gb.tsv'))
     entries.extend(load_subregion_entries('data/iso-3166-2-ca.tsv'))
+    entries.extend(load_subregion_entries('data/iso-3166-2-es.tsv'))
 
     subregions = [e for e in entries if
                   e['Subdivision category']
                   in ['province', 'territory', 'country', 'state', 'district'] and
                   e['Language code'] == 'en'] # US states and DC, Canadian provinces and territories, countries of GB
 
+    # Spanish autonomous communities and autonomous cities in North Africa
+    subregions.extend([e for e in load_subregion_entries('data/iso-3166-2-es.tsv')
+        if (e['Language code'] == 'es'
+        and e['Subdivision category'] in ['autonomous community', 'autonomous city in North Africa']) or
+         (e['Language code'] == 'ca'
+        and e['Subdivision category'] in ['autonomous community']) or
+         (e['Language code'] == 'gl'
+        and e['Subdivision category'] in ['autonomous community'])
+    ])
+
     subregions = {e['3166-2 code']: e for e in subregions}
 
     for r_val_key in subregions.values():
         del r_val_key['3166-2 code'], r_val_key['Romanization system'], r_val_key['Language code']
-        r_val_key['Subdivision name'] = re.sub(r' \[.*\]', '', r_val_key['Subdivision name'])
+        r_val_key['Subdivision name'] = strip_accents(re.sub(r' \[.*\]', '', r_val_key['Subdivision name']))
 
     return subregions
 
